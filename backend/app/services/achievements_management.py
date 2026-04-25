@@ -95,7 +95,9 @@ def check_achievement(player, match, achievement):
       return is_level_upgrade(unlocked_level, new_level), ach_to_append
 
   elif achievement["criteria"]["type"] == "win_streak":
-    if player.get("winstreak") >= achievement["criteria"]["threshold"]:
+    current_winstreak = player.get("winstreak", 0)
+    threshold = achievement["criteria"]["threshold"]
+    if current_winstreak >= threshold:
       ach_to_append = {
         "achievement_id": achievement["_id"],
         "unlocked_at": datetime.now(),

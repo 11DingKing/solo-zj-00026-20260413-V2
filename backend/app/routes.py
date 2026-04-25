@@ -345,22 +345,30 @@ def log_match():
 
     for player in players:
         player_data = players_collection.find_one({'_id': ObjectId(player['id'])})
-        player_data['total_matches'] += 1
+        
+        player_data['total_matches'] = player_data.get('total_matches', 0) + 1
+        player_data['wins'] = player_data.get('wins', 0)
+        player_data['losses'] = player_data.get('losses', 0)
+        player_data['winstreak'] = player_data.get('winstreak', 0)
+        player_data['longest_winstreak'] = player_data.get('longest_winstreak', 0)
+        player_data['num_competitive_win'] = player_data.get('num_competitive_win', 0)
+        
+        is_player_winner = False
         if game['is_cooperative'] and isWin:
-            player_data['wins'] += 1
-            player_data['winstreak'] += 1
+            is_player_winner = True
         elif isTeamMatch and winning_team is not None and player['team'] == winning_team:
-            player_data['wins'] += 1
-            player_data['winstreak'] += 1
+            is_player_winner = True
         elif not game['is_cooperative'] and not isTeamMatch and isinstance(winner, dict) and player['id'] == winner['id']:
-            player_data['wins'] += 1
+            is_player_winner = True
             player_data['num_competitive_win'] += 1
+        
+        if is_player_winner:
+            player_data['wins'] += 1
             player_data['winstreak'] += 1
         else:
             player_data['losses'] += 1
             player_data['winstreak'] = 0
         
-        # Update player's longest winstreak
         if player_data['winstreak'] > player_data['longest_winstreak']:
             player_data['longest_winstreak'] = player_data['winstreak']
 
