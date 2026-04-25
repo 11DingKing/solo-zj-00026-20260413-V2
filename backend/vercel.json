@@ -1,0 +1,14 @@
+{
+  "builds": [
+      {
+          "src": "./run.py",
+          "use": "@vercel/python",
+          "config": {
+              "installCommand": "pip install -r requirements.vercel.txt --no-cache-dir"
+          }
+      }
+  ],
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/run.py" }
+  ]
+}

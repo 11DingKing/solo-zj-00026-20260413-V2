@@ -1,0 +1,166 @@
+import { Container, Grid, Title, Text, Button, Group, Select, useMantineColorScheme } from "@mantine/core";
+import StatisticCard from "../components/StatisticCard"; // Adjust the path as necessary
+import { API_URL, FilterTypes, JWT_STORAGE } from "../model/Constants";
+import PlayerAchievementCard from "../components/PlayerAchievementCard";
+import { IconUser } from "@tabler/icons-react";
+import { useState, useEffect } from "react";
+import { Player } from "../model/Interfaces";
+import { useTranslation } from "react-i18next";
+
+const filterTypeOptions = {
+  startDate: { label: "Start Date", value: "start_date", type: FilterTypes.date },
+  endDate: { label: "End Date", value: "end_date", type: FilterTypes.date },
+  player: { label: "Player", value: "username", type: FilterTypes.string },
+  month: { label: "Month", value: "month", type: FilterTypes.month },
+  year: { label: "Year", value: "year", type: FilterTypes.year },
+  game: { label: "Game", value: "game_name", type: FilterTypes.string },
+}
+
+export default function IndexPage() {
+  const { colorScheme } = useMantineColorScheme();
+  const isDarkMode = colorScheme === "dark";
+
+  const [selectedUsername, setSelectedUsername] = useState<string | null>(null);
+  const [players, setPlayers] = useState<Player[]>([]);
+
+  const { t } = useTranslation();
+
+  // Fetch players for dropdown
+  useEffect(() => {
+    const requestOptions: RequestInit = {
+      method: "GET",
+    };
+    if (JWT_STORAGE === "cookie") {
+      requestOptions.credentials = "include";
+    } else if (JWT_STORAGE === "localstorage") {
+      requestOptions.headers = {
+        Authorization: `Bearer ${localStorage.getItem("jwt_token")}`,
+      };
+    }
+
+    fetch(`${API_URL}/players`, requestOptions)
+      .then((response) => response.json())
+      .then((data: Player[]) => {
+        setPlayers(data);
+      })
+      .catch((error) => {
+        console.error("Error fetching players:", error);
+      });
+  }, []);
+  const endpoints = [
+    { endpoint: "totHours", title: t("TotalHoursAchTitle", { defaultValue: "Total Hours" }), filters: [filterTypeOptions.startDate, filterTypeOptions.endDate] },
+    { endpoint: "totMatches", title: t("TotalMatchesAchTitle", { defaultValue: "Total Matches" }), filters: [filterTypeOptions.startDate, filterTypeOptions.endDate] },
+    { endpoint: "playerWins", title: t("PlayerWinsAchTitle", { defaultValue: "Player Wins" }), filters: [filterTypeOptions.player, filterTypeOptions.startDate, filterTypeOptions.endDate] },
+    { endpoint: "playerWinRate", title: t("PlayerWinRateAchTitle", { defaultValue: "Player Win Rate" }), filters: [filterTypeOptions.player, filterTypeOptions.startDate, filterTypeOptions.endDate] },
+    { endpoint: "playerHighestWinRate", title: t("PlayerHighestWinRateAchTitle", { defaultValue: "Player Highest Win Rate" }), filters: [filterTypeOptions.month, filterTypeOptions.year] },
+    { endpoint: "playerGameWins", title: t("PlayerGameWinsAchTitle", { defaultValue: "Player Game Wins" }), filters: [filterTypeOptions.player] },
+    { endpoint: "gameCoopWinRate", title: t("GameCoopWinRateAchTitle", { defaultValue: "Game Coop Win Rate" }), filters: [filterTypeOptions.game] },
+    { endpoint: "gameNumMatch", title: t("GameNumMatchAchTitle", { defaultValue: "Game Number of Matches" }) },
+    { endpoint: "gameAvgDuration", title: t("GameAvgDurationAchTitle", { defaultValue: "Game Average Duration" }) },
+    { endpoint: "gameBestValue", title: t("GameBestValueAchTitle", { defaultValue: "Game Best Value" }) },
+    { endpoint: "gameHighestScore", title: t("GameHighestScoreAchTitle", { defaultValue: "Game Highest Score" }), filters: [filterTypeOptions.game] },
+    { endpoint: "gameAvgScore", title: t("GameAvgScoreAchTitle", { defaultValue: "Game Average Score" }), filters: [filterTypeOptions.game] },
+    // Add more endpoints as needed
+  ];
+
+  // Group endpoints by categories for better organization
+  const playerStats = endpoints.filter(item => item.endpoint.startsWith('player'));
+  const gameStats = endpoints.filter(item => item.endpoint.startsWith('game'));
+  const globalStats = endpoints.filter(item => !item.endpoint.startsWith('player') && !item.endpoint.startsWith('game'));
+
+
+  return (
+    <Container size="xl" className="!py-6">
+      {/* Player Selection Header */}
+      <div className={`!mb-6 !p-4 !rounded-lg !border ${isDarkMode ? "!bg-gray-700 !border-gray-600" : "!bg-gray-50 !border-gray-100"}`}>
+        <Group justify="space-between" align="center" className="!flex-wrap">
+          <Title order={2} className={`!mb-0 !font-semibold !text-xl ${isDarkMode ? "!text-gray-100" : "!text-gray-800"}`}>
+            {t("AchievementsTitlePage", { defaultValue: "Achievements" })}
+          </Title>
+
+          <Group>
+            <Select
+              placeholder={t("SelectPlayerPlaceholder", { defaultValue: "Select Player" })}
+              value={selectedUsername}
+              onChange={setSelectedUsername}
+              data={players.map(player => ({ value: player.username, label: player.username }))}
+              clearable
+              searchable
+              className="!min-w-[200px]"
+              leftSection={<IconUser size={16} />}
+              styles={{
+                input: {
+                  border: "1px solid",
+                  borderColor: isDarkMode ? "rgb(75, 85, 99)" : "rgb(229, 231, 235)",
+                  backgroundColor: isDarkMode ? "rgb(55, 65, 81)" : "white",
+                  color: isDarkMode ? "white" : "black",
+                },
+              }}
+            />
+            <Button
+              variant="light"
+              color="blue"
+              onClick={() => setSelectedUsername(null)}
+              className={`!transition-colors ${isDarkMode ? "!bg-gray-700 !text-gray-200 hover:!bg-gray-600" : "!bg-blue-50 !text-blue-600 hover:!bg-blue-100"}`}
+            >
+              My Achievements
+            </Button>
+          </Group>
+        </Group>
+      </div>
+
+      {/* Achievement Card - passing the selected username */}
+      <PlayerAchievementCard username={selectedUsername} />
+      {/* Global Statistics */}
+      <div className="!mb-8">
+        <Title order={2} className={`!mb-4 !font-semibold !text-xl ${isDarkMode ? "!text-gray-100" : "!text-gray-800"}`}>
+          {t("GlobalStatisticsTitle", { defaultValue: "Global Statistics" })}
+        </Title>
+        <Text className={`!mb-4 ${isDarkMode ? "!text-gray-400" : "!text-gray-600"}`}>
+          {t("GlobalStatisticsDescription", { defaultValue: "Overview of all gaming activity across MeepleStats" })}
+        </Text>
+        <Grid>
+          {globalStats.map((item, index) => (
+            <Grid.Col key={index} span={{ base: 12, sm: 6, md: 4, lg: 3 }}>
+              <StatisticCard endpoint={item.endpoint} title={item.title} filters={item.filters} />
+            </Grid.Col>
+          ))}
+        </Grid>
+      </div>
+
+      {/* Player Statistics */}
+      <div className="!mb-8">
+        <Title order={2} className={`!mb-4 !font-semibold !text-xl ${isDarkMode ? "!text-gray-100" : "!text-gray-800"}`}>
+          {t("PlayerStatisticsTitle", { defaultValue: "Player Statistics" })}
+        </Title>
+        <Text className={`!mb-4 ${isDarkMode ? "!text-gray-400" : "!text-gray-600"}`}>
+          {t("PlayerStatisticsDescription", { defaultValue: "Performance metrics for individual players" })}
+        </Text>
+        <Grid>
+          {playerStats.map((item, index) => (
+            <Grid.Col key={index} span={{ base: 12, sm: 6, md: 4, lg: 3 }}>
+              <StatisticCard endpoint={item.endpoint} title={item.title} filters={item.filters} />
+            </Grid.Col>
+          ))}
+        </Grid>
+      </div>
+
+      {/* Game Statistics */}
+      <div>
+        <Title order={2} className={`!mb-4 !font-semibold !text-xl ${isDarkMode ? "!text-gray-100" : "!text-gray-800"}`}>
+          {t("GameStatisticsTitle", { defaultValue: "Game Statistics" })}
+        </Title>
+        <Text className={`!mb-4 ${isDarkMode ? "!text-gray-400" : "!text-gray-600"}`}>
+          {t("GameStatisticsDescription", { defaultValue: "Metrics about specific games in your collection" })}
+        </Text>
+        <Grid>
+          {gameStats.map((item, index) => (
+            <Grid.Col key={index} span={{ base: 12, sm: 6, md: 4, lg: 3 }}>
+              <StatisticCard endpoint={item.endpoint} title={item.title} filters={item.filters} />
+            </Grid.Col>
+          ))}
+        </Grid>
+      </div>
+    </Container>
+  );
+}
