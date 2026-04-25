@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Game } from "../model/Interfaces";
 import { API_URL, JWT_STORAGE } from "../model/Constants";
-import { Button, Container, Grid, Modal, Paper, useMantineColorScheme, Text, Title, Image, Autocomplete, Group, Divider, ActionIcon, Stack, Tooltip } from "@mantine/core";
+import { Button, Container, Grid, Modal, Paper, useMantineColorScheme, Text, Title, Image, Autocomplete, Group, Divider, ActionIcon, Stack, Tooltip, TextInput } from "@mantine/core";
 import GameCard from "../components/GameCard";
-import { IconPlus } from "@tabler/icons-react";
+import { IconPlus, IconSearch } from "@tabler/icons-react";
 import { SiBoardgamegeek } from "react-icons/si";
 import { useTranslation } from "react-i18next";
 
@@ -31,28 +31,27 @@ const GamesPage = () => {
 
   const [games, setGames] = useState<Game[]>([]);
   const [query, setQuery] = useState("");
+  const [searchKeyword, setSearchKeyword] = useState("");
   const [suggestions, setSuggestions] = useState<Game[]>([]);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
-  //const [loading, setLoading] = useState(false);
   const [modalOpened, setModalOpened] = useState(false);
 
   const { t } = useTranslation();
 
   useEffect(() => {
     if (query.length >= 3) {
-      setSuggestions([]); // Clear suggestions
-      searchGames(query); // Search for games
+      setSuggestions([]);
+      searchGames(query);
     } else {
-      setSuggestions([]); // Clear suggestions
-      setSelectedGame(null); // Clear selected game
+      setSuggestions([]);
+      setSelectedGame(null);
     }
   }, [query]);
 
-  const fetchGames = async () => {
+  const fetchGames = useCallback(async (keyword: string = "") => {
     const requestOptions: RequestInit = {
       method: "GET",
     };
-    // Check the JWT_STORAGE value and set credentials or headers accordingly
     if (JWT_STORAGE === "cookie") {
       requestOptions.credentials = "include";
     } else if (JWT_STORAGE === "localstorage") {
@@ -61,9 +60,10 @@ const GamesPage = () => {
       };
     }
 
+    const queryString = keyword ? `?keyword=${encodeURIComponent(keyword)}` : "";
 
     const [gamesResponse, rulesResponse] = await Promise.all([
-      fetch(`${API_URL}/games`, requestOptions),
+      fetch(`${API_URL}/games${queryString}`, requestOptions),
       fetch(`${API_URL}/getGamesWithRules`, requestOptions),
     ]);
     const data: ApiResponseItem[] = await gamesResponse.json();
@@ -79,22 +79,25 @@ const GamesPage = () => {
       yearPublished: "Unknown",
       is_cooperative: game.is_cooperative,
       notes: game.notes,
-      price: game.price || "", // Ensure price field is included
-      isGifted: game.isGifted || false, // Ensure isGift field is included
-      username: game.username || "", // Get username from local storage
-      hasRules: bgg_ids.includes(game.bgg_id), // Add hasRules flag based on bgg_ids
-      location: game.location || "", // Ensure location field is included
+      price: game.price || "",
+      isGifted: game.isGifted || false,
+      username: game.username || "",
+      hasRules: bgg_ids.includes(game.bgg_id),
+      location: game.location || "",
     }));
 
-    // Sort games by name
     mappedGames.sort((a, b) => a.name.localeCompare(b.name));
 
     setGames(mappedGames);
-  };
+  }, []);
 
   useEffect(() => {
-    fetchGames();
-  }, []);
+    const debounceTimer = setTimeout(() => {
+      fetchGames(searchKeyword);
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchKeyword, fetchGames]);
 
   const searchGames = async (query: string) => {
     if (query.length < 3) return; // Minimum 3 characters for search query
@@ -194,7 +197,26 @@ const GamesPage = () => {
 
   return (
     <Container size="xl" className="!px-4 md:!px-6">
-      <Group justify="flex-end" mb="md">
+      <Group justify="space-between" mb="md" align="flex-end">
+        <TextInput
+          placeholder={t("GamesPageSearchCollection", { defaultValue: "Search games in collection..." })}
+          value={searchKeyword}
+          onChange={(e) => setSearchKeyword(e.currentTarget.value)}
+          leftSection={<IconSearch size={18} />}
+          clearable
+          style={{ flex: 1, maxWidth: 400 }}
+          styles={{
+            input: {
+              borderRadius: '0.5rem',
+              backgroundColor: isDarkMode ? "#374151" : "white",
+              borderColor: isDarkMode ? "#6b7280" : "#d1d5db",
+              color: isDarkMode ? "#f3f4f6" : "#1f2937",
+              "&:focus": {
+                borderColor: isDarkMode ? "#60a5fa" : "#3b82f6",
+              },
+            },
+          }}
+        />
         <ActionIcon
           variant={isDarkMode ? "filled" : "light"}
           color="blue"

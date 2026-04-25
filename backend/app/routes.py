@@ -176,7 +176,13 @@ data_bp = Blueprint('games', __name__)
 @jwt_required()
 def get_games():
     try:
-        games = games_collection.find()
+        keyword = request.args.get('keyword', '')
+        
+        query = {}
+        if keyword:
+            query['name'] = {'$regex': keyword, '$options': 'i'}
+        
+        games = games_collection.find(query)
         
         games_data = []
 
@@ -431,19 +437,18 @@ def add_wishlist():
     notes = data.get('notes')
 
     if not game_id:
-        return jsonify({'error': 'Missing username or game_id'}), 400
+        return jsonify({'error': 'Missing game_id'}), 400
 
-    # Check if the game is already in the wishlist
-    game = wishlists_collection.find_one({'game_id': game_id})
-    if game:
-        return jsonify({'error': 'Game already in the wishlist'}), 400
-    
-    username = get_jwt_identity() #FIXME: uncomment this line
-    #username = "bb"
+    username = get_jwt_identity()
 
     user = players_collection.find_one({'username': username})
     if not user:
         return jsonify({'error': 'User not found'}), 404
+
+    # Check if the game is already in the user's wishlist
+    existing_wishlist_item = wishlists_collection.find_one({'game_id': game_id, 'username': username})
+    if existing_wishlist_item:
+        return jsonify({'error': 'Game already in the wishlist'}), 400
     
     # Get the game information from BGG API
     bgg_api_url = f"https://www.boardgamegeek.com/xmlapi2/thing?id={game_id}"
@@ -523,6 +528,9 @@ def matchHistory():
                     match['image_url'] = f"/uploads/{filename}"
 
                 del match['image']
+            
+            if 'players' in match and match['players']:
+                match['players'] = sorted(match['players'], key=lambda x: x.get('score', 0), reverse=True)
                     
             matches_data.append(match)
 

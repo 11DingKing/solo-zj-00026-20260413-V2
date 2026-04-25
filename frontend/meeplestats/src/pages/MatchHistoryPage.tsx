@@ -1,11 +1,12 @@
 import { Container, Text } from '@mantine/core';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { MatchCardInterface } from '../model/Interfaces';
 import MatchCard from '../components/MatchCards';
 import { API_URL, JWT_STORAGE } from '../model/Constants';
 import { MasonryInfiniteGrid } from "@egjs/react-infinitegrid";
 import { useViewportSize } from '@mantine/hooks';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router';
 
 const MatchHistoryPage = () => {
 
@@ -14,6 +15,7 @@ const MatchHistoryPage = () => {
   const [matches, setMatches] = useState<MatchCardInterface[]>([]);
   const { width } = useViewportSize();
   const { t } = useTranslation();
+  const location = useLocation();
 
 
   const getColumnCount = () => {
@@ -25,40 +27,40 @@ const MatchHistoryPage = () => {
     return 4;                       // Desktop large
   };
 
-  useEffect(() => {
-    const loadMatchHistory = async () => {
-      setLoading(true);
-      try {
+  const loadMatchHistory = useCallback(async () => {
+    setLoading(true);
+    try {
 
-        const requestOptions: RequestInit = {
-          method: "GET",
-        };
-
-        // Check the JWT_STORAGE value and set credentials or headers accordingly
-        if (JWT_STORAGE === "cookie") {
-          requestOptions.credentials = "include";
-        } else if (JWT_STORAGE === "localstorage") {
-          requestOptions.headers = {
-            Authorization: `Bearer ${localStorage.getItem("jwt_token")}`,
-          };
-        }
-
-        const response = await fetch(`${API_URL}/matchHistory`, requestOptions);
-        const data: MatchCardInterface[] = await response.json();
-        setMatches(data);
-        setError(null);
-      } catch (error) {
-        if (error instanceof Error) {
-          setError(error.message);
-        } else {
-          setError(String(error));
-        }
-      } finally {
-        setLoading(false);
+      const requestOptions: RequestInit = {
+        method: "GET",
       };
-    }
-    loadMatchHistory();
+
+      if (JWT_STORAGE === "cookie") {
+        requestOptions.credentials = "include";
+      } else if (JWT_STORAGE === "localstorage") {
+        requestOptions.headers = {
+          Authorization: `Bearer ${localStorage.getItem("jwt_token")}`,
+        };
+      }
+
+      const response = await fetch(`${API_URL}/matchHistory`, requestOptions);
+      const data: MatchCardInterface[] = await response.json();
+      setMatches(data);
+      setError(null);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError(String(error));
+      }
+    } finally {
+      setLoading(false);
+    };
   }, []);
+
+  useEffect(() => {
+    loadMatchHistory();
+  }, [location.key, loadMatchHistory]);
 
   return (
     <Container size="xl" px="xs">
